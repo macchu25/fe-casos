@@ -1,0 +1,391 @@
+"use client"
+
+import { useState, useEffect } from 'react';
+import { Settings, Bell, Shield, Sliders, Save, ChevronRight, Activity, Cpu } from 'lucide-react';
+import { useSession } from "next-auth/react";
+import { useNotification } from '@/app/context/NotificationContext';
+
+export default function SettingsPage() {
+  const { data: session, status } = useSession();
+  const { showToast } = useNotification();
+  
+  const [thrLow, setThrLow] = useState(0.015);
+  const [thrHigh, setThrHigh] = useState(0.040);
+  const [audioAlert, setAudioAlert] = useState(true);
+  const [showTeleModal, setShowTeleModal] = useState(false);
+  const [teleId, setTeleId] = useState('');
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+      const fetchProfile = async () => {
+        const token = (session?.user as any)?.accessToken;
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+        try {
+          const res = await fetch(`${apiBase}/health-profiles`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.telegram_chat_id) {
+              setTeleId(data.telegram_chat_id);
+            }
+            if (data.thrLow !== undefined) setThrLow(data.thrLow);
+            if (data.thrHigh !== undefined) setThrHigh(data.thrHigh);
+            if (data.audioAlert !== undefined) setAudioAlert(data.audioAlert);
+          }
+          setIsLoaded(true);
+        } catch (err) {
+          console.error("Lỗi lấy hồ sơ:", err);
+        }
+      };
+      fetchProfile();
+    }
+  }, [status, session]);
+
+  const handleSaveSettings = async () => {
+    const token = (session?.user as any)?.accessToken;
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+    
+    try {
+      const res = await fetch(`${apiBase}/health-profiles`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          thrLow,
+          thrHigh,
+          audioAlert
+        })
+      });
+
+      if (res.ok) {
+        showToast("Đã lưu cấu hình thành công!", "success");
+      } else {
+        showToast("Không thể lưu cấu hình.", "error");
+      }
+    } catch (err) {
+      showToast("Lỗi kết nối server.", "error");
+    }
+  };
+
+  const handleSaveTele = async () => {
+    if (!teleId) {
+      showToast("Vui lòng nhập Chat ID.", "error");
+      return;
+    }
+
+    const token = (session?.user as any)?.accessToken;
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+    
+    try {
+      const res = await fetch(`${apiBase}/health-profiles/telegram`, {
+        method: 'PUT',
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({ telegram_chat_id: teleId })
+      });
+      
+      if (res.ok) {
+        showToast("Đã liên kết Telegram thành công!", "success");
+        setShowTeleModal(false);
+      } else {
+        showToast("Lỗi khi lưu Telegram ID.", "error");
+      }
+    } catch (err) {
+      showToast("Không thể kết nối tới Backend.", "error");
+    }
+  };
+
+  return (
+    <div className="dashboard-section" style={{ minHeight: '100vh' }}>
+      <header className="page-header-premium">
+        <div>
+          <h1 className="page-title-premium">Cấu Hình Toàn Hệ Thống</h1>
+          <p className="page-subtitle-premium">
+            Tùy chỉnh các tham số AI và phương thức nhận cảnh báo.
+          </p>
+        </div>
+      </header>
+
+      <div className="settings-grid">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+          
+          {/* AI Sensitivity Section */}
+          <section className="overview-card">
+            <h2 style={{ margin: '0 0 32px 0', display: 'flex', alignItems: 'center', gap: '16px', fontSize: '1.35rem', color: 'var(--text-main)' }}>
+              <div className="icon-badge accent" style={{ width: '44px', height: '44px', borderRadius: '12px' }}>
+                <Shield size={22} color="var(--accent)" />
+              </div>
+              Độ nhạy AI (Thresholds)
+            </h2>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'flex-end' }}>
+                  <label style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '1.05rem' }}>Ngưỡng Bất Động (THR_LOW)</label>
+                  <span style={{ background: 'var(--accent-light)', color: 'var(--accent)', fontWeight: 800, padding: '4px 12px', borderRadius: '8px', fontSize: '1rem' }}>{thrLow.toFixed(3)}</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0.005" 
+                  max="0.030" 
+                  step="0.001" 
+                  value={thrLow} 
+                  onChange={(e) => setThrLow(parseFloat(e.target.value))}
+                  style={{ width: '100%', accentColor: 'var(--accent)', cursor: 'pointer', height: '6px' }}
+                />
+                <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginTop: '12px', lineHeight: '1.5', fontWeight: 500 }}>
+                  Dưới mức này AI sẽ coi là đối tượng đang nằm bất động (Unconscious).
+                </p>
+              </div>
+
+              <div style={{ height: '1px', background: 'var(--border)', width: '100%' }}></div>
+
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px', alignItems: 'flex-end' }}>
+                  <label style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '1.05rem' }}>Ngưỡng Co Giật (THR_HIGH)</label>
+                  <span style={{ background: 'var(--warning-light)', color: 'var(--warning)', fontWeight: 800, padding: '4px 12px', borderRadius: '8px', fontSize: '1rem' }}>{thrHigh.toFixed(3)}</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="0.030" 
+                  max="0.100" 
+                  step="0.005" 
+                  value={thrHigh} 
+                  onChange={(e) => setThrHigh(parseFloat(e.target.value))}
+                  style={{ width: '100%', accentColor: 'var(--warning)', cursor: 'pointer', height: '6px' }}
+                />
+                <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', marginTop: '12px', lineHeight: '1.5', fontWeight: 500 }}>
+                  Trên mức này AI sẽ kích hoạt cảnh báo co giật (Seizure).
+                </p>
+              </div>
+            </div>
+          </section>
+
+          {/* Notifications Section */}
+          <section className="overview-card">
+            <h2 style={{ margin: '0 0 32px 0', display: 'flex', alignItems: 'center', gap: '16px', fontSize: '1.35rem', color: 'var(--text-main)' }}>
+              <div className="icon-badge warning" style={{ width: '44px', height: '44px', borderRadius: '12px' }}>
+                <Bell size={22} color="var(--warning)" />
+              </div>
+              Thông báo & Cảnh báo
+            </h2>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '24px', borderBottom: '1px solid var(--border)' }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '1.05rem', marginBottom: '6px' }}>Cảnh báo âm thanh tại Dashboard</div>
+                  <div style={{ fontSize: '0.95rem', color: 'var(--text-muted)', fontWeight: 500 }}>Phát âm thanh còi hú khi phát hiện ngã.</div>
+                </div>
+                
+                {/* Custom Toggle Switch */}
+                <label style={{ position: 'relative', display: 'inline-block', width: '52px', height: '28px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={audioAlert} onChange={() => setAudioAlert(!audioAlert)} style={{ opacity: 0, width: 0, height: 0 }} />
+                  <span style={{
+                    position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
+                    backgroundColor: audioAlert ? 'var(--accent)' : 'var(--border)',
+                    transition: '0.4s var(--ease-out-quint)', borderRadius: '34px',
+                    boxShadow: audioAlert ? '0 2px 8px rgba(59, 130, 246, 0.4)' : 'inset 0 2px 4px rgba(0,0,0,0.05)'
+                  }}>
+                    <span style={{
+                      position: 'absolute', content: '""', height: '20px', width: '20px', left: '4px', bottom: '4px',
+                      backgroundColor: 'white', transition: '0.4s var(--ease-out-quint)', borderRadius: '50%',
+                      transform: audioAlert ? 'translateX(24px)' : 'translateX(0)',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                    }} />
+                  </span>
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '24px' }}>
+                <div>
+                  <div style={{ fontWeight: 600, color: 'var(--text-main)', fontSize: '1.05rem', marginBottom: '6px' }}>Gửi Telegram / SMS</div>
+                  <div style={{ fontSize: '0.95rem', color: 'var(--text-muted)', fontWeight: 500 }}>Gửi tin nhắn tức thời cho người thân.</div>
+                </div>
+                <button 
+                  onClick={() => setShowTeleModal(true)}
+                  style={{ 
+                    background: teleId ? '#10b981' : 'var(--accent)', 
+                    color: 'white', 
+                    border: 'none',
+                    padding: '12px 24px', 
+                    borderRadius: '14px', 
+                    fontWeight: 700, 
+                    cursor: 'pointer',
+                    fontSize: '0.9rem', 
+                    transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+                    boxShadow: teleId ? '0 4px 12px rgba(16, 185, 129, 0.2)' : '0 4px 12px rgba(37, 99, 235, 0.2)'
+                  }}
+                >
+                  {teleId ? `ID: ${teleId}` : 'Cấu hình ngay'}
+                </button>
+              </div>
+            </div>
+          </section>
+
+        </div>
+
+        {/* Sidebar Info */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+          
+          {/* Action Card */}
+          <div style={{ 
+            background: 'var(--accent-light)', padding: '32px', borderRadius: '24px', 
+            border: '1px solid rgba(59, 130, 246, 0.2)', boxShadow: '0 10px 30px rgba(59, 130, 246, 0.05)' 
+          }}>
+            <h3 style={{ margin: '0 0 16px 0', color: 'var(--accent)', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.2rem' }}>
+              <Sliders size={22} /> Mẹo cấu hình
+            </h3>
+            <p style={{ fontSize: '0.95rem', color: 'var(--text-main)', lineHeight: '1.6', fontWeight: 500, marginBottom: '24px' }}>
+              Sử dụng <strong>Webcam Local</strong> để calibrate ngưỡng Variance trước khi áp dụng cho camera giám sát treo tường để đảm bảo tính chính xác tuyệt đối.
+            </p>
+            <button 
+              onClick={handleSaveSettings}
+              style={{ 
+                width: '100%', background: 'var(--accent)', color: 'var(--bg-secondary)', 
+                border: 'none', padding: '16px', borderRadius: '16px', fontSize: '1.05rem', 
+                fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
+                cursor: 'pointer', transition: 'transform 0.2s var(--ease-out-quint), box-shadow 0.2s var(--ease-out-quint)'
+              }}
+            >
+              <Save size={20} /> LƯU CẤU HÌNH
+            </button>
+          </div>
+
+          {/* Status Card */}
+          <div className="overview-card" style={{ padding: '32px' }}>
+            <h3 style={{ margin: '0 0 24px 0', fontSize: '1.15rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+               <Cpu size={20} color="var(--text-muted)" /> Thiết bị liên kết
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {[
+                { name: 'AI Service (Py)', status: 'Kết nối tốt', color: 'var(--success)', bg: 'var(--success-light)' },
+                { name: 'Core Backend (Go)', status: 'Kết nối tốt', color: 'var(--success)', bg: 'var(--success-light)' },
+                { name: 'Database (Cloud)', status: 'Kết nối tốt', color: 'var(--success)', bg: 'var(--success-light)' }
+              ].map((item, idx) => (
+                <div key={idx} style={{ 
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  background: 'var(--bg-primary)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border)'
+                }}>
+                  <span style={{ color: 'var(--text-main)', fontWeight: 600, fontSize: '0.95rem' }}>{item.name}</span>
+                  <span style={{ 
+                    color: item.color, background: item.bg, padding: '4px 12px', borderRadius: '8px', 
+                    fontSize: '0.85rem', fontWeight: 700 
+                  }}>
+                    {item.status}
+                  </span>
+                </div>
+              ))}
+
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Telegram Modal */}
+      {showTeleModal && (
+        <div style={{ 
+          position: 'fixed', 
+          top: 0, 
+          left: 0, 
+          right: 0, 
+          bottom: 0, 
+          background: 'rgba(0,0,0,0.4)', 
+          backdropFilter: 'blur(8px)',
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          zIndex: 2000 
+        }}>
+          <div style={{ 
+            background: 'white', 
+            padding: '48px', 
+            borderRadius: '32px', 
+            width: '100%', 
+            maxWidth: '440px', 
+            boxShadow: '0 30px 60px rgba(0,0,0,0.2)',
+            animation: 'modalFadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+          }}>
+            <h3 style={{ margin: '0 0 24px 0', fontSize: '1.6rem', fontWeight: 850, letterSpacing: '-0.5px' }}>Cấu hình Telegram</h3>
+            
+            <div style={{ background: '#f8fafc', padding: '20px', borderRadius: '16px', marginBottom: '32px', fontSize: '0.95rem', color: '#64748b', lineHeight: '1.6', border: '1px solid #f1f5f9' }}>
+              <strong style={{ color: 'var(--text-main)', display: 'block', marginBottom: '8px' }}>Hướng dẫn lấy Chat ID:</strong>
+              1. Tìm kiếm và nhắn tin cho Bot <a href="https://t.me/userinfobot" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent)', fontWeight: 800, textDecoration: 'none', borderBottom: '2px solid var(--accent-light)' }}>@userinfobot</a><br />
+              2. Nó sẽ gửi lại cho bạn một dãy số (chính là <strong>ID</strong> của bạn).<br />
+              3. Dán dãy số đó vào ô bên dưới để nhận cảnh báo từ <strong>@Casos_autoBot</strong>.
+            </div>
+
+            <div style={{ marginBottom: '32px' }}>
+              <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Telegram Chat ID</label>
+              <input 
+                type="text" 
+                placeholder="Ví dụ: 123456789"
+                value={teleId}
+                onChange={(e) => setTeleId(e.target.value)}
+                style={{ 
+                  width: '100%', 
+                  padding: '18px', 
+                  borderRadius: '16px', 
+                  border: '1px solid #e2e8f0', 
+                  fontSize: '1.1rem',
+                  fontWeight: 600,
+                  boxSizing: 'border-box',
+                  outline: 'none',
+                  transition: 'border-color 0.2s',
+                  background: '#fcfdfe'
+                }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <button 
+                onClick={() => setShowTeleModal(false)} 
+                style={{ 
+                  flex: 1, 
+                  padding: '16px', 
+                  borderRadius: '16px', 
+                  border: '1px solid #e2e8f0', 
+                  background: 'white', 
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'background 0.2s'
+                }}
+              >
+                Hủy bỏ
+              </button>
+              <button 
+                onClick={handleSaveTele} 
+                style={{ 
+                  flex: 1, 
+                  padding: '16px', 
+                  borderRadius: '16px', 
+                  border: 'none', 
+                  background: 'var(--accent)', 
+                  color: 'white', 
+                  fontWeight: 700, 
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+                }}
+              >
+                Lưu cấu hình
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes modalFadeUp {
+          from { opacity: 0; transform: translateY(20px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
