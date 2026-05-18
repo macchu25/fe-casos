@@ -9,12 +9,13 @@ const recommendedCameras = [
     brand: 'TP-Link',
     model: 'Tapo C210',
     gradient: 'linear-gradient(135deg, #3b82f6 0%, #1e3a8a 100%)',
+    image: '/TP200.webp',
     price: 'Khoảng 550.000đ',
     resolution: '3MP (2304x1296)',
     features: ['Hỗ trợ luồng RTSP', 'Xoay 360 độ', 'Hồng ngoại ban đêm', 'Đàm thoại 2 chiều'],
     rating: 4.9,
     reviews: 12450,
-    shopeeLink: 'https://shopee.vn/search?keyword=tapo%20c210',
+    shopeeLink: 'http://shopee.vn/product/97485054/20782324162?gads_t_sig=gqRjZGVrxHCFomtpsTE0MjUxOnRzc19zZGtfa2V5omt20QABpGFsZ2_SAAAAZKNkZWvAomN0xEAAAAAMRoz0ZUjQw0QlRa--FjB0AKnHQPF7xv4DyGj9-GQwqn4zSdB6gztmw7ebmtsZs9FPJxlVqctc57WUE3IRqmNpcGhlcnRleHTEbAAAAAy2crLnprwjH1NO5m8MFBkaM55o9KLZ0vxkLrwv3FomK_abbbGqiLjbdH9S6iGr_-81RPWJdvPKGpnkHD3o9NfaGF9aPpio980xc3G8GSvh4jKFwHhwSlGd4rp6baQfgBlTLFmiZsn76A&gad_source=1&gad_campaignid=23023424812&gbraid=0AAAAADPpQE7yxfuQ2vd27s_AKdHkon84F&gclid=CjwKCAjw8arQBhB9EiwAfIKdQj5zJrOSQridaU1aXECkJpHKgd4KYtiRf6SoYE_n2rWgIgCD5xSSeRoC8PQQAvD_BwE',
     bestFor: 'Lựa chọn cân bằng tốt nhất',
     isTopPick: true,
     type: 'indoor'
@@ -24,12 +25,13 @@ const recommendedCameras = [
     brand: 'EZVIZ',
     model: 'C6N 1080p / 2K',
     gradient: 'linear-gradient(135deg, #10b981 0%, #047857 100%)',
+    image: '/C6N-1080p-2K.webp',
     price: 'Khoảng 450.000đ - 650.000đ',
     resolution: '2MP / 4MP',
     features: ['Chuẩn ONVIF/RTSP', 'Bám theo chuyển động', 'Privacy mode', 'Kết nối ổn định'],
     rating: 4.8,
     reviews: 8930,
-    shopeeLink: 'https://shopee.vn/search?keyword=ezviz%20c6n',
+    shopeeLink: 'https://shopee.vn/product/31195569/5437955853?gads_t_sig=gqRjZGVrxHCFomtpsTE0MjUxOnRzc19zZGtfa2V5omt20QABpGFsZ2_SAAAAZKNkZWvAomN0xEAAAAAMRoz0ZUjQw0QlRa--FjB0AKnHQPF7xv4DyGj9-GQwqn4zSdB6gztmw7ebmtsZs9FPJxlVqctc57WUE3IRqmNpcGhlcnRleHTEagAAAAwOwsEKTvtqzsrcBZUyH5Hl8xOikNNAaAx38wfdjRtO0eNhybHmid2y7pYvN_9StW_iv_NCYrMDIBO-W8H9IK_vEjLGAxRodfmPPP7UqnuFT8l8wWqnnruTRV_DL8oROKaDMTkiO64&gad_source=1&gad_campaignid=23023425037&gbraid=0AAAAADPpQE4fjheImr59vPQGdXEbFgFsf&gclid=CjwKCAjw8arQBhB9EiwAfIKdQHP6mRrAe9JicDmWxRcr5CdiAC5G5xQRBvo0BDGu4HG3zd5ZFFi-BoCDhEQAvD_BwE',
     bestFor: 'Dễ dàng cài đặt & Dùng ổn định',
     isTopPick: false,
     type: 'indoor'
@@ -151,14 +153,28 @@ export default function CameraRecommendationsPage() {
               </div>
             )}
             
-            <div className="card-image-wrapper" style={{ background: cam.gradient }}>
-              <div className="cam-icon-overlay">
-                {cam.specialIcon === 'moon' ? (
-                  <Moon size={64} color="rgba(255,255,255,0.9)" strokeWidth={1.5} />
-                ) : (
-                  <Cctv size={64} color="rgba(255,255,255,0.9)" strokeWidth={1.5} />
-                )}
-              </div>
+            <div className="card-image-wrapper" style={{ background: cam.image ? '#ffffff' : cam.gradient }}>
+              {cam.image ? (
+                <img 
+                  src={cam.image} 
+                  alt={cam.model} 
+                  style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'cover',
+                    transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)'
+                  }}
+                  className="cam-img"
+                />
+              ) : (
+                <div className="cam-icon-overlay">
+                  {cam.specialIcon === 'moon' ? (
+                    <Moon size={64} color="rgba(255,255,255,0.9)" strokeWidth={1.5} />
+                  ) : (
+                    <Cctv size={64} color="rgba(255,255,255,0.9)" strokeWidth={1.5} />
+                  )}
+                </div>
+              )}
               <div className="brand-tag">{cam.brand}</div>
             </div>
             
@@ -357,6 +373,10 @@ export default function CameraRecommendationsPage() {
 
         .camera-card:hover .cam-icon-overlay {
           transform: scale(1.15);
+        }
+
+        .camera-card:hover .cam-img {
+          transform: scale(1.08);
         }
 
         .brand-tag {
