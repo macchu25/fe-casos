@@ -289,7 +289,7 @@ export default function SettingsPage() {
 
       {/* Telegram Modal */}
       {showTeleModal && (
-        <div style={{ 
+        <div className="modal-backdrop-blur" style={{ 
           position: 'fixed', 
           top: 0, 
           left: 0, 

@@ -1045,3 +1045,11 @@ tr:last-child td {
 .tooltip-link:hover svg {
   color: inherit;
 }
+
+/* ========================================================================= */
+/* Global Modal Stacking Context Fix (:has selector)                        */
+/* Elevates main workspace stack above sidebar when modal is active         */
+/* ========================================================================= */
+body:has(.modal-backdrop-blur) .main-content-medical {
+  z-index: 9999 !important;
+}

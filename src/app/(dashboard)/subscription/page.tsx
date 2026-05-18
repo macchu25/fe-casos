@@ -353,7 +353,7 @@ export default function SubscriptionPage() {
     }}>
 
       {showSuccess && (
-        <div style={{
+        <div className="modal-backdrop-blur" style={{
           position: 'fixed', inset: 0, background: 'rgba(255,255,255,0.95)',
           backdropFilter: 'blur(20px)', zIndex: 2000,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -376,7 +376,7 @@ export default function SubscriptionPage() {
       )}
 
       {showCancelModal && (
-        <div style={{ 
+        <div className="modal-backdrop-blur" style={{ 
           position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.7)', 
           backdropFilter: 'blur(16px)', zIndex: 1100, 
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -462,7 +462,7 @@ export default function SubscriptionPage() {
       )}
 
       {cancelStatus && (
-        <div style={{
+        <div className="modal-backdrop-blur" style={{
           position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.4)',
           backdropFilter: 'blur(12px)', zIndex: 1200,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -509,7 +509,7 @@ export default function SubscriptionPage() {
       )}
 
       {selectedPlan && (
-        <div style={{
+        <div className="modal-backdrop-blur" style={{
           position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)',
           backdropFilter: 'blur(8px)', zIndex: 1000,
           display: 'flex', alignItems: 'center', justifyContent: 'center'
