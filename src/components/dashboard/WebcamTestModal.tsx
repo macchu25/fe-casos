@@ -30,6 +30,8 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [systemAlertActive, setSystemAlertActive] = useState(false);
 
+  const streamRef = useRef<MediaStream | null>(null);
+
   // Initialize camera stream
   useEffect(() => {
     async function startCamera() {
@@ -38,11 +40,9 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
           video: { width: 640, height: 480, facingMode: 'user' },
           audio: false
         });
+        streamRef.current = mediaStream;
         setStream(mediaStream);
         setHasPermission(true);
-        if (videoRef.current) {
-          videoRef.current.srcObject = mediaStream;
-        }
       } catch (err) {
         console.error('Lỗi truy cập webcam:', err);
         setHasPermission(false);
@@ -54,17 +54,20 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
 
     return () => {
       // Clean up camera stream
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
   }, []);
 
   useEffect(() => {
-    if (stream && videoRef.current && !videoRef.current.srcObject) {
+    if (stream && videoRef.current) {
       videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(err => {
+        console.error('Lỗi tự động phát video:', err);
+      });
     }
-  }, [stream]);
+  }, [stream, hasPermission]);
 
   const handleSendSignal = async () => {
     setIsSubmitting(true);
