@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Video, X, ShieldAlert, CheckCircle, Flame, AlertCircle, Activity, Loader2 } from 'lucide-react';
 import { useNotification } from '@/app/context/NotificationContext';
 
@@ -31,25 +31,49 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
   const [systemAlertActive, setSystemAlertActive] = useState(false);
 
   const streamRef = useRef<MediaStream | null>(null);
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string>('');
+
+  const startCamera = useCallback(async (deviceId?: string) => {
+    try {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+
+      const constraints: MediaStreamConstraints = {
+        video: { 
+          width: 640, 
+          height: 480, 
+          ...(deviceId ? { deviceId: { exact: deviceId } } : { facingMode: 'user' }) 
+        },
+        audio: false
+      };
+
+      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = mediaStream;
+      setStream(mediaStream);
+      setHasPermission(true);
+
+      const allDevices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = allDevices.filter(d => d.kind === 'videoinput');
+      setDevices(videoDevices);
+      
+      const activeTrack = mediaStream.getVideoTracks()[0];
+      if (activeTrack) {
+        const settings = activeTrack.getSettings();
+        if (settings.deviceId) {
+          setSelectedDeviceId(settings.deviceId);
+        }
+      }
+    } catch (err) {
+      console.error('Lỗi truy cập webcam:', err);
+      setHasPermission(false);
+      showToast('Không thể truy cập WebCam. Vui lòng cấp quyền camera cho trình duyệt.', 'error');
+    }
+  }, [showToast]);
 
   // Initialize camera stream
   useEffect(() => {
-    async function startCamera() {
-      try {
-        const mediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480, facingMode: 'user' },
-          audio: false
-        });
-        streamRef.current = mediaStream;
-        setStream(mediaStream);
-        setHasPermission(true);
-      } catch (err) {
-        console.error('Lỗi truy cập webcam:', err);
-        setHasPermission(false);
-        showToast('Không thể truy cập WebCam. Vui lòng cấp quyền camera cho trình duyệt.', 'error');
-      }
-    }
-
     startCamera();
 
     return () => {
@@ -58,7 +82,7 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
         streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
-  }, []);
+  }, [startCamera]);
 
   useEffect(() => {
     if (stream && videoRef.current) {
@@ -68,6 +92,12 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
       });
     }
   }, [stream, hasPermission]);
+
+  const handleDeviceChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const deviceId = e.target.value;
+    setSelectedDeviceId(deviceId);
+    await startCamera(deviceId);
+  };
 
   const handleSendSignal = async () => {
     setIsSubmitting(true);
@@ -293,6 +323,36 @@ const WebcamTestModal: React.FC<WebcamTestModalProps> = ({ camera, onClose, toke
           {/* Right Panel: Control Dashboard */}
           <div className="webcam-controls-panel">
             
+            {devices.length > 0 && (
+              <div className="control-section-card">
+                <h4>Chọn thiết bị Camera</h4>
+                <div style={{ marginTop: '8px', position: 'relative' }}>
+                  <select 
+                    value={selectedDeviceId} 
+                    onChange={handleDeviceChange}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      border: '1px solid rgba(0, 0, 0, 0.08)',
+                      backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                      color: '#1e293b',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {devices.map((device) => (
+                      <option key={device.deviceId} value={device.deviceId}>
+                        {device.label || `Camera ${device.deviceId.slice(0, 5)}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
             <div className="control-section-card">
               <h4>1. Chọn tư thế kiểm thử (AI States)</h4>
               <div className="state-selection-grid">
