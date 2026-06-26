@@ -5,6 +5,8 @@ import { ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useNotification } from '@/app/context/NotificationContext';
+import { useDashboardSocket } from '@/hooks/useDashboardSocket';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 // Components
 import CameraManager from '@/components/dashboard/CameraManager';
@@ -17,6 +19,7 @@ import '@/app/incidents.css';
 export default function IncidentsPage() {
   const { showToast, confirm } = useNotification();
   const { data: session, status } = useSession();
+  const { t } = useLanguage();
   const router = useRouter();
   
   const [incidents, setIncidents] = useState<any[]>([]);
@@ -30,6 +33,11 @@ export default function IncidentsPage() {
   const [activeTestCam, setActiveTestCam] = useState<any | null>(null);
   
   const token = session?.user ? (session.user as any).accessToken : '';
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
+
+  useDashboardSocket(apiBase, token, undefined, () => {
+    loadData();
+  });
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -61,10 +69,12 @@ export default function IncidentsPage() {
         setIncidents(incData.map((item: any) => ({
           id: item.id || item._id,
           camera: item.camera_name || "Camera #"+(item.camera_id?.substring(0,8) || "Unknown"),
-          type: item.type,
+          type: item.type || "Cảnh báo",
           conf: item.confidence_score || 0,
           createdAt: item.detected_at ? new Date(item.detected_at).toLocaleString('vi-VN') : "N/A",
-          status: item.status === 'active' ? 'Active' : 'Resolved'
+          status: item.status === 'active' ? 'Active' : 'Resolved',
+          videoUrl: item.video_url || '',
+          cloudVideoUrl: item.cloud_video_url || ''
         })));
       }
     } catch (err) {
@@ -74,7 +84,7 @@ export default function IncidentsPage() {
 
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
-      showToast("Trình duyệt không hỗ trợ định vị GPS.", "error");
+      showToast(t('incidents.toastGpsNotSupported'), "error");
       return;
     }
     
@@ -86,7 +96,7 @@ export default function IncidentsPage() {
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&accept-language=vi`);
           const data = await res.json();
           setCamLocation(data?.display_name || `Vĩ độ: ${latitude.toFixed(5)}, Kinh độ: ${longitude.toFixed(5)}`);
-          showToast("Đã lấy vị trí!", "success");
+          showToast(t('incidents.toastGpsSuccess'), "success");
         } catch (err) {
           setCamLocation(`Vĩ độ: ${latitude.toFixed(5)}, Kinh độ: ${longitude.toFixed(5)}`);
         } finally {
@@ -94,7 +104,7 @@ export default function IncidentsPage() {
         }
       },
       () => {
-        showToast("Lỗi: Vui lòng cấp quyền vị trí.", "error");
+        showToast(t('incidents.toastGpsPermissionDenied'), "error");
         setIsLocating(false);
       }
     );
@@ -102,7 +112,7 @@ export default function IncidentsPage() {
 
   const handleSaveCamera = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!camName) return showToast("Vui lòng nhập tên Camera.", "error");
+    if (!camName) return showToast(t('incidents.toastCamNameRequired'), "error");
     
     const token = (session?.user as any)?.accessToken;
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
@@ -116,7 +126,7 @@ export default function IncidentsPage() {
       const profileData = await profileRes.json();
       
       if (!profileData.contacts || profileData.contacts.length === 0) {
-        const goToSetup = await confirm("Yêu cầu thông tin Y tế", "Bạn cần thêm ít nhất 1 liên hệ người thân trước.", "Thiết lập ngay", "primary");
+        const goToSetup = await confirm(t('incidents.confirmReqMedicalContactTitle'), t('incidents.confirmReqMedicalContactDesc'), t('incidents.confirmReqMedicalContactBtn'), "primary");
         if (goToSetup) router.push('/profile');
         return;
       }
@@ -136,15 +146,14 @@ export default function IncidentsPage() {
       const data = await res.json();
 
       if (res.ok) {
-        showToast(editingCamId ? "Đã cập nhật!" : "Đã thêm mới!", "success");
+        showToast(editingCamId ? t('incidents.toastCamUpdated') : t('incidents.toastCamAdded'), "success");
         setEditingCamId(null); setCamName(''); setCamLocation(''); setRtspUrl('');
         loadData();
       } else if (res.status === 403 && data.error === "Giới hạn gói cước") {
-        // Hiển thị hộp thoại nâng cấp gói cước
         const goToUpgrade = await confirm(
-          "Giới hạn gói cước Free", 
+          t('incidents.confirmLimitFreeTitle'), 
           data.message || "Bạn đã đạt giới hạn tối đa của gói Free. Vui lòng nâng cấp để thêm nhiều camera hơn.",
-          "Nâng cấp ngay",
+          t('incidents.confirmReqMedicalContactBtn'),
           "primary"
         );
         if (goToUpgrade) router.push('/subscription');
@@ -152,7 +161,7 @@ export default function IncidentsPage() {
         showToast(data.message || data.error || "Có lỗi xảy ra", "error");
       }
     } catch (err) {
-      showToast("Lỗi kết nối.", "error");
+      showToast(t('incidents.toastConnError'), "error");
     } finally {
       setIsTesting(false);
     }
@@ -174,7 +183,7 @@ export default function IncidentsPage() {
   };
 
   const handleDeleteCamera = async (cam: any) => {
-    const isConfirmed = await confirm("Xác nhận xóa?", `Xóa camera "${cam.name}"?`);
+    const isConfirmed = await confirm(t('profile.confirmDeleteTitle'), t('incidents.confirmDeleteCamDesc').replace('{name}', cam.name));
     if (!isConfirmed) return;
 
     try {
@@ -185,36 +194,36 @@ export default function IncidentsPage() {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
-        showToast("Đã xóa!", "success");
+        showToast(t('incidents.toastCamDeleted'), "success");
         loadData();
       }
-    } catch (err) { showToast("Lỗi xóa.", "error"); }
+    } catch (err) { showToast(t('incidents.toastDeleteFailed'), "error"); }
   };
 
   return (
     <div className="incidents-container pt-10">
       <header className="page-header-premium mb-10">
         <div>
-          <h1 className="page-title-premium">Lịch Sử Sự Cố & Quản Trị</h1>
+          <h1 className="page-title-premium">{t('incidents.title')}</h1>
           <p className="page-subtitle-premium">
-            Nhật ký các sự kiện té ngã và trạng thái hạ tầng hệ thống AI Core.
+            {t('incidents.subtitle')}
           </p>
         </div>
       </header>
       <div className="stats-row">
           <div className="glass-stat-card">
-             <div className="stat-icon alert"><ShieldAlert size={20} /></div>
-             <div className="stat-info">
-                <span className="stat-label">Sự cố tháng này</span>
-                <span className="stat-value">{incidents.length} Vụ việc</span>
-             </div>
+              <div className="stat-icon alert"><ShieldAlert size={20} /></div>
+              <div className="stat-info">
+                 <span className="stat-label">{t('incidents.statMonth')}</span>
+                 <span className="stat-value">{incidents.length} {t('incidents.incidentsUnit')}</span>
+              </div>
           </div>
           <div className="glass-stat-card">
-             <div className="stat-icon success"><CheckCircle2 size={20} /></div>
-             <div className="stat-info">
-                <span className="stat-label">Xử lý an toàn</span>
-                <span className="stat-value">100%</span>
-             </div>
+              <div className="stat-icon success"><CheckCircle2 size={20} /></div>
+              <div className="stat-info">
+                 <span className="stat-label">{t('incidents.statResolved')}</span>
+                 <span className="stat-value">{t('incidents.resolvedPercent')}</span>
+              </div>
           </div>
         </div>
 
@@ -232,13 +241,15 @@ export default function IncidentsPage() {
           toggleCamStatus={toggleCamStatus}
           handleDeleteCamera={handleDeleteCamera}
           onOpenWebcamTest={setActiveTestCam}
+          token={token}
+          onRefreshData={loadData}
         />
       </div>
 
       <div className="mt-10">
         <IncidentTable 
           incidents={incidents} 
-          onExport={() => showToast("Đang chuẩn bị dữ liệu...", "info")} 
+          onExport={() => showToast(t('incidents.exportInfo'), "info")} 
         />
       </div>
 

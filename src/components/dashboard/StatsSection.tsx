@@ -1,9 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { FileBarChart, UserCheck, Clock, TrendingUp, Download, Shield, Activity, Zap } from 'lucide-react';
+import { FileBarChart, UserCheck, Clock, TrendingUp, Download, Shield, Activity, Zap, AlertCircle, Calendar } from 'lucide-react';
+import { useSession } from "next-auth/react";
 
 interface SummaryData {
   total_incidents: number;
   recent_24h: number;
+  today_incidents?: number;
+  week_incidents?: number;
+  month_incidents?: number;
   active_cameras: number;
   total_users: number;
   system_health: string;
@@ -15,19 +19,22 @@ interface TimelineItem {
 }
 
 const StatsSection: React.FC = () => {
+  const { data: session } = useSession();
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!session?.user) return;
       try {
-        const token = localStorage.getItem('token');
+        const token = (session.user as any).accessToken;
         const headers = { 'Authorization': `Bearer ${token}` };
+        const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
         const [sumRes, timeRes] = await Promise.all([
-          fetch('http://localhost:8080/api/v1/analytics/summary', { headers }),
-          fetch('http://localhost:8080/api/v1/analytics/timeline', { headers })
+          fetch(`${apiBase}/analytics/summary`, { headers }),
+          fetch(`${apiBase}/analytics/timeline`, { headers })
         ]);
 
         const sumData = await sumRes.json();
@@ -45,7 +52,7 @@ const StatsSection: React.FC = () => {
     fetchData();
     const interval = setInterval(fetchData, 60000);
     return () => clearInterval(interval);
-  }, []);
+  }, [session]);
 
   const safeTimeline = Array.isArray(timeline) ? timeline : [];
   const maxCount = Math.max(...safeTimeline.map(t => t.count), 5);
@@ -99,7 +106,7 @@ const StatsSection: React.FC = () => {
       </div>
 
       {/* METRIC GRID HUD STYLE */}
-      <div className="widget-grid-container" style={{ position: 'relative', height: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', padding: '20px' }}>
+      <div className="widget-grid-container" style={{ position: 'relative', height: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', padding: '20px' }}>
         
         <div className="widget" style={{ position: 'relative', width: '100%', padding: '30px', animationDelay: '0.1s' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
@@ -118,7 +125,46 @@ const StatsSection: React.FC = () => {
           </div>
         </div>
 
+        <div className="widget" style={{ position: 'relative', width: '100%', padding: '30px', animationDelay: '0.15s' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
+            <div>
+              <div className="metric-label">Incidents Today</div>
+              <div className="metric-value" style={{ fontSize: '2.5rem', color: '#f59e0b' }}>{summary?.today_incidents ?? summary?.recent_24h ?? 0}</div>
+            </div>
+            <div className="icon-badge warning" style={{ background: 'rgba(245, 158, 11, 0.1)' }}>
+              <Clock size={20} color="#f59e0b" />
+            </div>
+          </div>
+          <div className="metric-label" style={{ marginTop: '20px', fontSize: '0.7rem' }}>Timeframe: Current Day</div>
+        </div>
+
         <div className="widget" style={{ position: 'relative', width: '100%', padding: '30px', animationDelay: '0.2s' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
+            <div>
+              <div className="metric-label">Incidents This Week</div>
+              <div className="metric-value" style={{ fontSize: '2.5rem', color: 'var(--accent)' }}>{summary?.week_incidents ?? 0}</div>
+            </div>
+            <div className="icon-badge primary">
+              <TrendingUp size={20} color="var(--accent)" />
+            </div>
+          </div>
+          <div className="metric-label" style={{ marginTop: '20px', fontSize: '0.7rem' }}>Timeframe: Current Week</div>
+        </div>
+
+        <div className="widget" style={{ position: 'relative', width: '100%', padding: '30px', animationDelay: '0.25s' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
+            <div>
+              <div className="metric-label">Incidents This Month</div>
+              <div className="metric-value" style={{ fontSize: '2.5rem', color: '#8b5cf6' }}>{summary?.month_incidents ?? 0}</div>
+            </div>
+            <div className="icon-badge success" style={{ background: 'rgba(139, 92, 246, 0.1)' }}>
+              <Calendar size={20} color="#8b5cf6" />
+            </div>
+          </div>
+          <div className="metric-label" style={{ marginTop: '20px', fontSize: '0.7rem' }}>Timeframe: Current Month</div>
+        </div>
+
+        <div className="widget" style={{ position: 'relative', width: '100%', padding: '30px', animationDelay: '0.3s' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
             <div>
               <div className="metric-label">Active Sensors</div>
@@ -135,7 +181,7 @@ const StatsSection: React.FC = () => {
           </div>
         </div>
 
-        <div className="widget" style={{ position: 'relative', width: '100%', padding: '30px', animationDelay: '0.3s' }}>
+        <div className="widget" style={{ position: 'relative', width: '100%', padding: '30px', animationDelay: '0.35s' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
             <div>
               <div className="metric-label">AI Accuracy</div>

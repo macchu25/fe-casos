@@ -5,11 +5,13 @@ import { Cpu, Zap, Activity, ShieldCheck, Terminal, Layers, BarChart, Server, Pl
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useNotification } from '@/app/context/NotificationContext';
+import { useLanguage } from '@/app/context/LanguageContext';
 
 export default function AIModelsPage() {
   const { data: session, status } = useSession();
   const { showToast } = useNotification();
   const router = useRouter();
+  const { t } = useLanguage();
   
   const [mounted, setMounted] = useState(false);
   const [models, setModels] = useState<any[]>([]);
@@ -45,7 +47,7 @@ export default function AIModelsPage() {
       }
     } catch (err) {
       console.error("Fetch models error:", err);
-      showToast("Không thể kết nối tới máy chủ AI.", "error");
+      showToast(t('aiModels.toastConnError'), "error");
     } finally {
       setLoading(false);
     }
@@ -62,11 +64,11 @@ export default function AIModelsPage() {
       });
       if (res.ok) {
         const data = await res.json();
-        showToast(`Đã chuyển trạng thái sang: ${data.new_status}`, "success");
+        showToast(t('aiModels.toastStatusChanged').replace('{status}', data.new_status), "success");
         fetchModels();
       }
     } catch (err) {
-      showToast("Lỗi khi thay đổi trạng thái model.", "error");
+      showToast(t('aiModels.toastToggleError'), "error");
     } finally {
       setTogglingId(null);
     }
@@ -79,26 +81,26 @@ export default function AIModelsPage() {
   return (
     <div style={{ padding: '20px 30px 40px 30px', minHeight: 'calc(100vh - 80px)', boxSizing: 'border-box' }}>
       <header style={{ marginBottom: '32px' }}>
-        <h1 style={{ fontSize: '2.2rem', fontWeight: 800, margin: '0 0 8px 0', color: 'var(--text-main)', letterSpacing: '-0.02em' }}>Trung Tâm AI Core</h1>
+        <h1 style={{ fontSize: '2.2rem', fontWeight: 800, margin: '0 0 8px 0', color: 'var(--text-main)', letterSpacing: '-0.02em' }}>{t('aiModels.title')}</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '1rem', margin: 0 }}>
-          Quản lý và giám sát hiệu năng của các mô hình trí tuệ nhân tạo đang hoạt động.
+          {t('aiModels.subtitle')}
         </p>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: '32px' }}>
+      <div className="responsive-grid-2col-sidebar">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
           
           {/* Models Table */}
           <div className="overview-card" style={{ padding: '0', overflow: 'hidden' }}>
             <div style={{ padding: '24px 32px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '12px' }}>
-                 <Layers size={22} color="var(--accent)" /> Danh sách Model
+                 <Layers size={22} color="var(--accent)" /> {t('aiModels.modelList')}
                </h2>
                <button 
                   onClick={fetchModels}
                   disabled={loading}
                   style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', padding: '8px 16px', borderRadius: '10px', fontSize: '0.85rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} Quét lại
+                  {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />} {t('aiModels.rescanBtn')}
                 </button>
             </div>
             
@@ -106,11 +108,11 @@ export default function AIModelsPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ textAlign: 'left', background: 'rgba(241, 245, 249, 0.4)' }}>
-                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>MODEL NAME</th>
-                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>STATUS</th>
-                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>PRECISION</th>
-                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>LATENCY</th>
-                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>ACTION</th>
+                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>{t('aiModels.tableModelName')}</th>
+                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>{t('aiModels.tableStatus')}</th>
+                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>{t('aiModels.tablePrecision')}</th>
+                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>{t('aiModels.tableLatency')}</th>
+                    <th style={{ padding: '16px 32px', fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>{t('aiModels.tableToggle')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -118,7 +120,7 @@ export default function AIModelsPage() {
                     <tr>
                       <td colSpan={5} style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
                         <Loader2 size={40} className="animate-spin" style={{ margin: '0 auto 16px auto', opacity: 0.5 }} />
-                        <div>Đang kết nối tới AI Cluster...</div>
+                        <div>{t('aiModels.connectingCluster')}</div>
                       </td>
                     </tr>
                   ) : models.map((model) => (
@@ -129,30 +131,53 @@ export default function AIModelsPage() {
                       </td>
                       <td style={{ padding: '24px 32px' }}>
                         <span style={{ 
-                          background: model.status === 'Active' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(148, 163, 184, 0.1)',
-                          color: model.status === 'Active' ? 'var(--success)' : 'var(--text-muted)',
-                          padding: '6px 12px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700
+                           background: model.status === 'Active' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(148, 163, 184, 0.1)',
+                           color: model.status === 'Active' ? 'var(--success)' : 'var(--text-muted)',
+                           padding: '6px 12px', borderRadius: '8px', fontSize: '0.8rem', fontWeight: 700
                         }}>
-                          {model.status}
+                          {model.status === 'Active' ? t('aiModels.statusActive') : t('aiModels.statusPaused')}
                         </span>
                       </td>
                       <td style={{ padding: '24px 32px', fontWeight: 600, color: 'var(--text-main)' }}>{model.precision}</td>
                       <td style={{ padding: '24px 32px', fontWeight: 600, color: 'var(--text-main)' }}>{model.latency || model.speed}</td>
                       <td style={{ padding: '24px 32px' }}>
-                        <button 
-                          onClick={() => toggleModel(model._id || model.id)}
-                          disabled={togglingId === (model._id || model.id)}
-                          style={{ 
-                            background: model.status === 'Active' ? 'rgba(239, 68, 68, 0.05)' : 'rgba(37, 99, 235, 0.05)',
-                            color: model.status === 'Active' ? 'var(--danger)' : 'var(--accent)',
-                            border: 'none', width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                        <div 
+                          onClick={() => {
+                            if (togglingId !== (model._id || model.id)) {
+                              toggleModel(model._id || model.id);
+                            }
+                          }}
+                          style={{
+                            width: '50px',
+                            height: '28px',
+                            borderRadius: '15px',
+                            background: model.status === 'Active' ? '#22c55e' : '#cbd5e1',
+                            padding: '2px',
+                            cursor: togglingId === (model._id || model.id) ? 'not-allowed' : 'pointer',
+                            transition: 'background 0.2s ease',
+                            position: 'relative',
+                            display: 'inline-block',
+                            opacity: togglingId === (model._id || model.id) ? 0.6 : 1
+                          }}
+                        >
+                          <div style={{
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            background: '#ffffff',
+                            position: 'absolute',
+                            left: model.status === 'Active' ? '24px' : '2px',
+                            transition: 'left 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
                           }}>
-                          {togglingId === (model._id || model.id) ? (
-                            <Loader2 size={18} className="animate-spin" />
-                          ) : (
-                            model.status === 'Active' ? <Pause size={18} /> : <Play size={18} />
-                          )}
-                        </button>
+                            {togglingId === (model._id || model.id) && (
+                              <Loader2 size={12} className="animate-spin" style={{ color: '#64748b' }} />
+                            )}
+                          </div>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -198,7 +223,7 @@ export default function AIModelsPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                <div>
                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 600 }}>
-                   <span>GPU Utilization</span>
+                   <span>{t('aiModels.gpuUtilization')}</span>
                    <span style={{ color: 'var(--accent)' }}>64%</span>
                  </div>
                  <div style={{ height: '8px', background: 'var(--bg-primary)', borderRadius: '10px', overflow: 'hidden' }}>
@@ -208,7 +233,7 @@ export default function AIModelsPage() {
 
                <div>
                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '0.9rem', fontWeight: 600 }}>
-                   <span>VRAM Usage</span>
+                   <span>{t('aiModels.vramUsage')}</span>
                    <span style={{ color: 'var(--warning)' }}>4.2 / 8 GB</span>
                  </div>
                  <div style={{ height: '8px', background: 'var(--bg-primary)', borderRadius: '10px', overflow: 'hidden' }}>
@@ -218,32 +243,30 @@ export default function AIModelsPage() {
 
                <div style={{ height: '1px', background: 'var(--border)', margin: '8px 0' }}></div>
 
-               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+               <div className="responsive-grid-2col-equal">
                  <div style={{ background: 'var(--bg-primary)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border)' }}>
-                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>TEMPERATURE</div>
+                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>{t('aiModels.temperature')}</div>
                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)' }}>62°C</div>
                  </div>
                  <div style={{ background: 'var(--bg-primary)', padding: '16px', borderRadius: '16px', border: '1px solid var(--border)' }}>
-                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>FPS AVG</div>
+                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '4px' }}>{t('aiModels.fpsAvg')}</div>
                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--success)' }}>60.2</div>
                  </div>
                </div>
             </div>
           </div>
 
-
-
           {/* Infrastructure Card */}
           <div style={{ background: 'var(--text-main)', color: 'white', padding: '32px', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)' }}>
              <h3 style={{ margin: '0 0 16px 0', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-               <Server size={22} color="#38bdf8" /> Cluster Status
+                <Server size={22} color="#38bdf8" /> {t('aiModels.clusterStatus')}
              </h3>
              <p style={{ fontSize: '0.9rem', color: '#94a3b8', lineHeight: '1.6', marginBottom: '24px' }}>
-               Hệ thống đang chạy trên cụm Edge Computing phân tán. Tự động chuyển vùng khi node bị lỗi.
+               {t('aiModels.clusterDesc')}
              </p>
              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(255,255,255,0.05)', padding: '12px 16px', borderRadius: '12px' }}>
                 <ShieldCheck size={20} color="#27c93f" />
-                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>End-to-End Encrypted</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{t('aiModels.encrypted')}</span>
              </div>
           </div>
         </div>
